@@ -4,6 +4,20 @@ A tool for mapping relative coordinates to an asset.
 
  - Uses `localStorage` to save last executed configuration.
 
+
+### Example config
+
+```
+mupm 200
+assetFileName sword.svg
+assetWidthMeters: 0.5
+assetHeightMeters: 2
+addCenterDot
+```
+
+Abbreviations:
+ - `mupm` "map units per meter". Pixels per meter assuming there is no zoom/FOV scaling.
+
  <hr>
 
 ![](https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExbHptZ2wwZHF3OGY4OWxuZnViNXhnNHBvOGtnZzJjYzkzcXR6OGU2aiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/aglT7twNUtLPpU29a5/giphy.gif)
