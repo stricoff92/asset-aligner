@@ -56,20 +56,73 @@ function addHTMLElements() {
     configInput.id = configInputId;
     configInput.style.width = "96%";
     configInput.style.height = "80%";
+    configInput.style.fontSize = "1.1rem";
+    configInput.spellcheck = false;
     controlPanel.appendChild(configInput);
     controlPanel.appendChild(document.createElement("br"));
     const runConfigButton = document.createElement("button");
     runConfigButton.id = runConfigButtonId;
-    runConfigButton.style.fontSize = "1.4rem";
+    runConfigButton.style.fontSize = "1.1rem";
     runConfigButton.style.backgroundColor = "#0f0";
     runConfigButton.style.margin = "0.5rem";
-    runConfigButton.textContent = "Run Config";
+    runConfigButton.textContent = "Run Config (ctrl+enter)";
     controlPanel.appendChild(runConfigButton);
 
     pageContainer.appendChild(canvas);
     pageContainer.appendChild(controlPanel);
 }
 
+/*
+def rotate(origin: Tuple, point: Tuple, _angle: float) -> Tuple[int]:
+    """ https://stackoverflow.com/questions/34372480/rotate-point-about-another-point-in-degrees-python
+    """
+    angle = _angle * -1 # Angle must be passed as radians
+    ox, oy = origin
+    px, py = point
+
+    sine_angle = math.sin(angle)
+    cos_angle = math.cos(angle)
+    dx = px - ox
+    dy = py - oy
+
+    qx = ox + cos_angle * dx - sine_angle * dy
+    qy = oy + sine_angle * dx + cos_angle * dy
+    return round(qx), round(qy)
+*/
+
+const degreesToRads = deg => (deg * Math.PI) / 180.0;
+function rotate(origin, point, angle) {
+    const rads = degreesToRads(angle);
+    const [ox, oy] = origin;
+    const [px, py] = point;
+    const sine_angle = Math.sin(angle);
+    const cos_angle = Math.cos(angle);
+    const dx = px - ox;
+    const dy = py - oy;
+    const qx = ox + cos_angle * dx - sine_angle * dy;
+    const qy = oy + sine_angle * dx + cos_angle * dy;
+    return [Math.round(qx), Math.round(qy)];
+}
+
+function drawRotatedImg(
+    ctx, //: CanvasRenderingContext2D,
+    img, //: HTMLImageElement,
+    angleDegrees, //: number,
+    x, //: number,
+    y, //: number,
+    w, //: number,
+    h, //: number,
+) {
+    // Thanks https://stackoverflow.com/a/43927355
+    ctx.save()
+    ctx.translate(x+w/2, y+h/2);
+    ctx.rotate(angleDegrees * (Math.PI / 180));
+    ctx.translate(-x-w/2, -y-h/2);
+    ctx.drawImage(img, x, y, w, h);
+    ctx.restore()
+}
+
+// CONFIG RENDERING ///////////////////////////////////
 async function runConfig() {
     const text = document.getElementById(configInputId);
     const clean = line => line.trim().replace(/\s+/g, ' ');
@@ -88,13 +141,16 @@ async function runConfig() {
     let mupm;
     let assetFileName;
     let assetWidthMeters, assetHeightMeters;
+    let rotationDegrees = 0.0;
 
     // Optional
     let addCenterDot;
     let centerDotColor = "#f00";
+    const refDots = [];
 
     for(let i = 0; i < configLines.length; i++) {
         const line = configLines[i];
+        if(line.startsWith("//")) continue;
         if(line.startsWith("mupm")) {
             mupm = parseInt(line.split(" ")[1]);
 
@@ -113,18 +169,48 @@ async function runConfig() {
         } else if(line.startsWith("centerDotColor")) {
             centerDotColor = line.split(" ")[1];
         }
+        else if(line.startsWith("rotationDegrees")) {
+            rotationDegrees = parseFloat(line.split(" ")[1]);
+        }
+        else if (line.startsWith("refDot")) {
+            const [x, y, color] = line.split(" ")[1].split(",").map((v, i) => i<2 ? parseFloat(v): v);
+            refDots.push({x, y, color});
+        }
     }
+    console.log({ refDots });
+
     const isValidInt = v => v &&typeof v !== "undefined" && !isNaN(v) && Number.isInteger(v) && v > 0;
     const isValidFloat = v => v && typeof v !== "undefined" && !isNaN(v) && v > 0;
+    const isAnyValidFloat = v => typeof v !== "undefined" && !isNaN(v);
     const isValidFileName = v => v && typeof v !== "undefined" && v.length > 0;
+    const isValidColorHex = v => /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(v);
+
     if(!isValidInt(mupm)) {console.error("mupm not valid"); anyErrors = true;}
     else console.log({ mupm });
+
     if(!isValidFileName(assetFileName)) {console.error("assetFileName not valid"); anyErrors = true;}
     else console.log({ assetFileName });
+
     if(!isValidFloat(assetWidthMeters)) {console.error("assetWidthMeters not valid"); anyErrors = true;}
     else console.log({ assetWidthMeters })
+
     if(!isValidFloat(assetHeightMeters)) {console.error("assetHeightMeters not valid"); anyErrors = true;}
     else console.log({ assetHeightMeters });
+
+    if(!isValidColorHex(centerDotColor)) {console.error("centerDotColor not valid"); anyErrors = true;}
+    else console.log({ centerDotColor });
+
+    if(!isAnyValidFloat(rotationDegrees)) {console.error("rotationDegrees not valid"); anyErrors = true;}
+    else console.log({ rotationDegrees });
+
+    for(let i=0; i<refDots.length; i++) {
+        let refDot = refDots[i];
+        if(!isAnyValidFloat(refDot.x)) {console.error(`refDot ${i} x not valid: ${refDot.x}`); anyErrors = true;}
+        if(!isAnyValidFloat(refDot.y)) {console.error(`refDot ${i} y not valid: ${refDot.y}`); anyErrors = true;}
+        if(!isValidColorHex(refDot.color)) {console.error(`refDot ${i} color not valid`); anyErrors = true;}
+    }
+
+    console.log({ anyErrors})
     if(anyErrors) return;
 
     // Load asset image
@@ -142,15 +228,28 @@ async function runConfig() {
     const imgTopLeftCornerCanvasX = canvasW / 2 - assetWidthPixels / 2;
     const imgTopLeftCornerCanvasY = canvasH / 2 - assetHeightPixels / 2;
     console.log({ assetWidthPixels, assetHeightPixels, imgTopLeftCornerCanvasX, imgTopLeftCornerCanvasY });
-    ctx.drawImage(assetImg, imgTopLeftCornerCanvasX, imgTopLeftCornerCanvasY, assetWidthPixels, assetHeightPixels);
-    ctx.strokeStyle = "#dbdbdb";
-    ctx.lineWidth = 1;
-    ctx.strokeRect(imgTopLeftCornerCanvasX, imgTopLeftCornerCanvasY, assetWidthPixels, assetHeightPixels);
+    drawRotatedImg(
+        ctx,
+        assetImg,
+        rotationDegrees,
+        imgTopLeftCornerCanvasX, imgTopLeftCornerCanvasY,
+        assetWidthPixels, assetHeightPixels
+    );
 
     if(addCenterDot) {
         ctx.beginPath();
         ctx.fillStyle = centerDotColor;
         ctx.arc(canvasW / 2, canvasH / 2, 4, 0, 2 * Math.PI);
+        ctx.fill();
+    }
+
+    for(let i=0; i<refDots.length; i++) {
+        const refDot = refDots[i];
+        const pX = (canvasW / 2) + refDot.x * mupm * assetWidthMeters;
+        const pY = (canvasH / 2) - refDot.y * mupm * assetHeightMeters;
+        ctx.beginPath();
+        ctx.fillStyle = refDot.color;
+        ctx.arc(pX, pY, 4, 0, 2 * Math.PI);
         ctx.fill();
     }
 
@@ -168,5 +267,8 @@ function main() {
 
 
     document.getElementById(runConfigButtonId).addEventListener("click", runConfig);
+    document.addEventListener("keydown", e => {
+        if(e.key === "Enter" && e.ctrlKey) runConfig();
+    });
 }
 document.addEventListener("DOMContentLoaded", main);
