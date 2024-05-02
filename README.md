@@ -3,6 +3,10 @@
 A tool for mapping relative coordinates to an asset.
 
  - Uses `localStorage` (zombie cookies) to save last executed configuration.
+ - Requires python3 to be installed on you system.
+ - Do not expose the development server to the open internet.
+ - If you resize your browser window you must refresh the page.
+ - Tested on Firefox.
 
 
 ### Configuration Syntax
