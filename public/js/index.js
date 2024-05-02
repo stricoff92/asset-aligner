@@ -72,56 +72,6 @@ function addHTMLElements() {
     pageContainer.appendChild(controlPanel);
 }
 
-/*
-def rotate(origin: Tuple, point: Tuple, _angle: float) -> Tuple[int]:
-    """ https://stackoverflow.com/questions/34372480/rotate-point-about-another-point-in-degrees-python
-    """
-    angle = _angle * -1 # Angle must be passed as radians
-    ox, oy = origin
-    px, py = point
-
-    sine_angle = math.sin(angle)
-    cos_angle = math.cos(angle)
-    dx = px - ox
-    dy = py - oy
-
-    qx = ox + cos_angle * dx - sine_angle * dy
-    qy = oy + sine_angle * dx + cos_angle * dy
-    return round(qx), round(qy)
-*/
-
-const degreesToRads = deg => (deg * Math.PI) / 180.0;
-function rotate(origin, point, angle) {
-    const rads = degreesToRads(angle);
-    const [ox, oy] = origin;
-    const [px, py] = point;
-    const sine_angle = Math.sin(angle);
-    const cos_angle = Math.cos(angle);
-    const dx = px - ox;
-    const dy = py - oy;
-    const qx = ox + cos_angle * dx - sine_angle * dy;
-    const qy = oy + sine_angle * dx + cos_angle * dy;
-    return [Math.round(qx), Math.round(qy)];
-}
-
-function drawRotatedImg(
-    ctx, //: CanvasRenderingContext2D,
-    img, //: HTMLImageElement,
-    angleDegrees, //: number,
-    x, //: number,
-    y, //: number,
-    w, //: number,
-    h, //: number,
-) {
-    // Thanks https://stackoverflow.com/a/43927355
-    ctx.save()
-    ctx.translate(x+w/2, y+h/2);
-    ctx.rotate(angleDegrees * (Math.PI / 180));
-    ctx.translate(-x-w/2, -y-h/2);
-    ctx.drawImage(img, x, y, w, h);
-    ctx.restore()
-}
-
 // CONFIG RENDERING ///////////////////////////////////
 async function runConfig() {
     const text = document.getElementById(configInputId);
@@ -146,11 +96,15 @@ async function runConfig() {
     // Optional
     let addCenterDot;
     let centerDotColor = "#f00";
+    let addScaleBar = false;
     const refDots = [];
 
     for(let i = 0; i < configLines.length; i++) {
         const line = configLines[i];
-        if(line.startsWith("//")) continue;
+
+        if(line.startsWith("//")) // comment line
+            continue;
+
         if(line.startsWith("mupm")) {
             mupm = parseInt(line.split(" ")[1]);
 
@@ -168,6 +122,9 @@ async function runConfig() {
             addCenterDot = true;
         } else if(line.startsWith("centerDotColor")) {
             centerDotColor = line.split(" ")[1];
+        }
+        else if(line.startsWith("addScaleBar")) {
+            addScaleBar = true;
         }
         else if(line.startsWith("rotationDegrees")) {
             rotationDegrees = parseFloat(line.split(" ")[1]);
@@ -228,14 +185,15 @@ async function runConfig() {
     const imgTopLeftCornerCanvasX = canvasW / 2 - assetWidthPixels / 2;
     const imgTopLeftCornerCanvasY = canvasH / 2 - assetHeightPixels / 2;
     console.log({ assetWidthPixels, assetHeightPixels, imgTopLeftCornerCanvasX, imgTopLeftCornerCanvasY });
-    drawRotatedImg(
-        ctx,
+    ctx.drawImage(
         assetImg,
-        rotationDegrees,
-        imgTopLeftCornerCanvasX, imgTopLeftCornerCanvasY,
-        assetWidthPixels, assetHeightPixels
+        imgTopLeftCornerCanvasX,
+        imgTopLeftCornerCanvasY,
+        assetWidthPixels,
+        assetHeightPixels,
     );
 
+    // CENTER DOT
     if(addCenterDot) {
         ctx.beginPath();
         ctx.fillStyle = centerDotColor;
@@ -243,6 +201,7 @@ async function runConfig() {
         ctx.fill();
     }
 
+    // REFERENCING DOTS
     for(let i=0; i<refDots.length; i++) {
         const refDot = refDots[i];
         const pX = (canvasW / 2) + refDot.x * mupm * assetWidthMeters;
@@ -251,6 +210,20 @@ async function runConfig() {
         ctx.fillStyle = refDot.color;
         ctx.arc(pX, pY, 4, 0, 2 * Math.PI);
         ctx.fill();
+    }
+
+    // SCALE BAR
+    if(addScaleBar) {
+        const scaleBarHeightPx = 5;
+        const scaleBarWidthPx = canvasW / 3.4;
+        const scaleBarMeters = (scaleBarWidthPx / mupm).toFixed(4);
+        const scaleBarYOffset = canvasH - 10;
+        const scaleBarXOffset = 20;
+        ctx.beginPath();
+        ctx.fillStyle = "#000";
+        ctx.fillRect(scaleBarXOffset, scaleBarYOffset, scaleBarWidthPx, scaleBarHeightPx);
+        ctx.font = "16px Arial";
+        ctx.fillText(`${scaleBarMeters}m`, scaleBarXOffset, scaleBarYOffset - 5);
     }
 
 }
