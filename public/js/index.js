@@ -14,14 +14,14 @@ function addHTMLElements() {
     canvas.id = canvasId;
     const controlPanel = document.createElement("div");
 
-
     const displayFormat = windowW > windowH ? DISPLAY_FORMAT_HORIZONTAL : DISPLAY_FORMAT_VERTICAL;
     console.log({ displayFormat });
     const pageContainer = document.getElementById(containerId);
     pageContainer.style.display = "flex";
 
-}
 
+
+}
 
 
 function main() {
