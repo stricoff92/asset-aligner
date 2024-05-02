@@ -1,6 +1,7 @@
 
 console.log("Hello from index.js!")
 
+const dataCookieName = "assetalignerdata";
 const canvasId = "display-canvas";
 const controlPanelId = "control-panel";
 const containerId = "page-container";
@@ -75,15 +76,23 @@ async function runConfig() {
     const configLines = text.value.split("\n").map(clean).filter(line => line.length > 0);
     console.log({ configLines });
     if(!configLines.length) return;
+    console.log("setting cookie with data " + text.value)
+    localStorage.setItem(dataCookieName, text.value);
 
     const ctx = document.getElementById(canvasId).getContext("2d");
     ctx.clearRect(0, 0, canvasW, canvasH);
     let anyErrors = false;
 
     // Parse config
+    // Required
     let mupm;
     let assetFileName;
     let assetWidthMeters, assetHeightMeters;
+
+    // Optional
+    let addCenterDot;
+    let centerDotColor = "#f00";
+
     for(let i = 0; i < configLines.length; i++) {
         const line = configLines[i];
         if(line.startsWith("mupm")) {
@@ -97,6 +106,12 @@ async function runConfig() {
 
         } else if (line.startsWith("assetHeightMeters")) {
             assetHeightMeters = parseFloat(line.split(" ")[1]);
+        }
+        // Optional
+        else if(line.startsWith("addCenterDot")) {
+            addCenterDot = true;
+        } else if(line.startsWith("centerDotColor")) {
+            centerDotColor = line.split(" ")[1];
         }
     }
     const isValidInt = v => v &&typeof v !== "undefined" && !isNaN(v) && Number.isInteger(v) && v > 0;
@@ -119,20 +134,39 @@ async function runConfig() {
         assetImg.onerror = () => reject(`file not found: ${assetFileName}`);
         assetImg.src = `/images/${assetFileName}`;
     });
+    console.log({ assetImg });
 
     // Draw asset image
-    const assetWidthPixels = Math.floor(assetWidthMeters * mupm);
-    const assetHeightPixels = Math.floor(assetHeightMeters * mupm);
+    const assetWidthPixels = assetWidthMeters * mupm;
+    const assetHeightPixels = assetHeightMeters * mupm;
     const imgTopLeftCornerCanvasX = canvasW / 2 - assetWidthPixels / 2;
     const imgTopLeftCornerCanvasY = canvasH / 2 - assetHeightPixels / 2;
     console.log({ assetWidthPixels, assetHeightPixels, imgTopLeftCornerCanvasX, imgTopLeftCornerCanvasY });
     ctx.drawImage(assetImg, imgTopLeftCornerCanvasX, imgTopLeftCornerCanvasY, assetWidthPixels, assetHeightPixels);
+    ctx.strokeStyle = "#dbdbdb";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(imgTopLeftCornerCanvasX, imgTopLeftCornerCanvasY, assetWidthPixels, assetHeightPixels);
+
+    if(addCenterDot) {
+        ctx.beginPath();
+        ctx.fillStyle = centerDotColor;
+        ctx.arc(canvasW / 2, canvasH / 2, 4, 0, 2 * Math.PI);
+        ctx.fill();
+    }
 
 }
 
 
 function main() {
     addHTMLElements();
+
+    const config = localStorage.getItem(dataCookieName);
+    if(config)
+        document.getElementById(configInputId).value = config;
+    else
+        console.log("no config found in cookie");
+
+
     document.getElementById(runConfigButtonId).addEventListener("click", runConfig);
 }
 document.addEventListener("DOMContentLoaded", main);
