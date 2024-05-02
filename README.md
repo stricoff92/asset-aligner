@@ -2,7 +2,7 @@
 
 A tool for mapping relative coordinates to an asset.
 
- - Uses `localStorage` to save last executed configuration.
+ - Uses `localStorage` (zombie cookies) to save last executed configuration.
 
 
 ### Example config
