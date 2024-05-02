@@ -1,4 +1,4 @@
-# asset-aligner
+# Asset Alignment
 
 A tool for mapping relative coordinates to an asset.
 
