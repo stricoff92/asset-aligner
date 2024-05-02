@@ -7,3 +7,5 @@
 *.jpeg
 *.gif
 *.ico
+
+!asset-alignment-screenshot.png
