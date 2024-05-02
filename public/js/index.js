@@ -91,7 +91,6 @@ async function runConfig() {
     let mupm;
     let assetFileName;
     let assetWidthMeters, assetHeightMeters;
-    let rotationDegrees = 0.0;
 
     // Optional
     let addCenterDot;
@@ -126,9 +125,6 @@ async function runConfig() {
         else if(line.startsWith("addScaleBar")) {
             addScaleBar = true;
         }
-        else if(line.startsWith("rotationDegrees")) {
-            rotationDegrees = parseFloat(line.split(" ")[1]);
-        }
         else if (line.startsWith("refDot")) {
             const [x, y, color] = line.split(" ")[1].split(",").map((v, i) => i<2 ? parseFloat(v): v);
             refDots.push({x, y, color});
@@ -157,8 +153,6 @@ async function runConfig() {
     if(!isValidColorHex(centerDotColor)) {console.error("centerDotColor not valid"); anyErrors = true;}
     else console.log({ centerDotColor });
 
-    if(!isAnyValidFloat(rotationDegrees)) {console.error("rotationDegrees not valid"); anyErrors = true;}
-    else console.log({ rotationDegrees });
 
     for(let i=0; i<refDots.length; i++) {
         let refDot = refDots[i];
